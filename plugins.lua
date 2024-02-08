@@ -4,45 +4,43 @@ local overrides = require "custom.configs.overrides"
 local plugins = {
   {
     "lopi-py/luau-lsp.nvim",
-    init = function()
-      require("neoconf").setup()
+    opts = function(_, opts)
+      local neoconf = require "neoconf"
+      neoconf.setup()
 
-      require("mason-lspconfig").setup_handlers {
-        luau_lsp = function()
-          require("luau-lsp.server").setup {
-            filetypes = { "luau" },
-            settings = {
-              -- sourcemap = {
-              --   enable = true, -- enable sourcemap generation
-              --   autogenerate = true, -- auto generate sourcemap with rojo's sourcemap watcher
-              -- },
-              -- types = {
-              --   roblox = true, -- enable roblox api
-              -- },
-            },
-          }
-        end,
-      }
-    end,
-    opts = function (_, opts)
-      
-      opts.server = {
-        root_dir = function()
-          -- temporary solution
-          return vim.loop.cwd()
-        end,
-        filetypes = { "luau" }, -- default is { "luau" }
-        capabilities = vim.lsp.protocol.make_client_capabilities(), -- just an example
-        settings = {
-          ["luau-lsp"] = {
-            completion = {
-              imports = {
-                enabled = true,
-              },
-            },
-          },
-        },
-      }
+      local vs_settings = neoconf.get "vscode"
+      if vs_settings and vs_settings["luau-lsp"] then
+        local luau = vs_settings["luau-lsp"]
+
+        local function camel_to_snake(camel)
+          return camel:gsub("%u", "_%1"):lower()
+        end
+
+        local function convert_keys_to_snake_case(inputTable)
+          local outputTable = {}
+          for key, value in pairs(inputTable) do
+            local snakeKey = camel_to_snake(key)
+            outputTable[snakeKey] = value
+          end
+          return outputTable
+        end
+
+        if luau.types then
+          opts.types = convert_keys_to_snake_case(luau.types)
+        end
+
+        if luau.fflags then
+          opts.fflags = convert_keys_to_snake_case(luau.fflags)
+        end
+
+        if luau.sourcemap then
+          opts.sourcemap = convert_keys_to_snake_case(luau.sourcemap)
+        end
+
+        opts.server = {
+          settings = luau
+        }
+      end
     end,
     dependencies = {
       "williamboman/mason-lspconfig.nvim",
